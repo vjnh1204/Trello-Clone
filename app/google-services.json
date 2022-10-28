@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1028702824450",
+    "project_id": "projemana-fccdb",
+    "storage_bucket": "projemana-fccdb.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1028702824450:android:3b3fd682bb8b145dcc9f1b",
+        "android_client_info": {
+          "package_name": "com.projemanag"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1028702824450-gsf3o5rolqi0q7em1r4b6d4a3n2e37bn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeT9JVMbhbOLX_OQ-Hq3hUXGq6VksjvZ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1028702824450-gsf3o5rolqi0q7em1r4b6d4a3n2e37bn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
