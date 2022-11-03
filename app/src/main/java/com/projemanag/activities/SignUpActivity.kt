@@ -11,6 +11,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.projemanag.R
 import com.projemanag.databinding.ActivitySignUpBinding
+import com.projemanag.firebase.FireStore
+import com.projemanag.models.User
 import kotlin.math.round
 
 class SignUpActivity : BaseActivity() {
@@ -42,6 +44,12 @@ class SignUpActivity : BaseActivity() {
             onBackPressed()
         }
     }
+    fun userRegisteredSuccess(){
+        hideProgressDialog()
+        Toast.makeText(this@SignUpActivity,"You are successfully registered",Toast.LENGTH_SHORT).show()
+        FirebaseAuth.getInstance().signOut()
+        finish()
+    }
     private fun resisterUser(){
         val name = binding?.etName?.text.toString().trim(){it <= ' '}
         val email = binding?.etEmail?.text.toString().trim(){it <= ' '}
@@ -50,13 +58,11 @@ class SignUpActivity : BaseActivity() {
           showProgressDialog(resources.getString(R.string.please_wait))
             FirebaseAuth.getInstance().createUserWithEmailAndPassword(email,password).addOnCompleteListener {
                 task ->
-                hideProgressDialog()
                 if(task.isSuccessful){
                     val firebaseUser : FirebaseUser = task.result!!.user!!
                     val registeredEmail = firebaseUser.email!!
-                    Toast.makeText(this@SignUpActivity,"$name you are successfully registered with email $registeredEmail",Toast.LENGTH_SHORT).show()
-                    FirebaseAuth.getInstance().signOut()
-                    finish()
+                    val user = User(firebaseUser.uid,name,registeredEmail)
+                    FireStore().registerUser(this@SignUpActivity,user)
                 }
                 else{
                     Toast.makeText(this@SignUpActivity,task.exception!!.message,Toast.LENGTH_SHORT).show()

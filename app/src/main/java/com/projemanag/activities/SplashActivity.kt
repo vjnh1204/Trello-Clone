@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.lifecycle.lifecycleScope
 import androidx.viewbinding.ViewBinding
 import com.projemanag.databinding.ActivitySplashBinding
+import com.projemanag.firebase.FireStore
 import kotlinx.coroutines.*
 
 
@@ -30,12 +31,18 @@ class SplashActivity : BaseActivity() {
         binding?.tvAppName?.typeface = typeface
         delayScreen()
     }
-
     private fun delayScreen(){
         lifecycleScope.launch {
             delay(3000)
             withContext(Dispatchers.Main){
-                startActivity(Intent(this@SplashActivity, IntroActivity::class.java))
+                val currentUserId = FireStore().getCurrentUser()
+                if (currentUserId.isNotEmpty()){
+                    startActivity(Intent(this@SplashActivity,MainActivity::class.java))
+                }
+                else{
+                    startActivity(Intent(this@SplashActivity, IntroActivity::class.java))
+                }
+                finish()
             }
         }
     }

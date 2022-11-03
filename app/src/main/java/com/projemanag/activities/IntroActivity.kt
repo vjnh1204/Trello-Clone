@@ -6,8 +6,9 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.viewbinding.ViewBinding
 import com.projemanag.databinding.ActivityIntroBinding
+import kotlin.math.acos
 
-class IntroActivity : BaseActivity() {
+class IntroActivity() : BaseActivity() {
     private var binding: ActivityIntroBinding? = null
 
     override fun setLayout(): ViewBinding = ActivityIntroBinding.inflate(layoutInflater)
@@ -21,7 +22,6 @@ class IntroActivity : BaseActivity() {
 
         setUpUI()
     }
-
     private fun setUpUI(){
         binding?.btnSignUpIntro?.setOnClickListener{
             startActivity(Intent(this@IntroActivity, SignUpActivity::class.java))
