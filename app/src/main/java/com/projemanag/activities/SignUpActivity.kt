@@ -1,5 +1,6 @@
 package com.projemanag.activities
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.ContactsContract.CommonDataKinds.Email
@@ -41,7 +42,8 @@ class SignUpActivity : BaseActivity() {
             supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_black_color_back_24dp)
         }
         binding?.toolbarSignUpActivity?.setNavigationOnClickListener {
-            onBackPressed()
+            startActivity(Intent(this@SignUpActivity,IntroActivity::class.java))
+            finish()
         }
     }
     fun userRegisteredSuccess(){
@@ -86,5 +88,11 @@ class SignUpActivity : BaseActivity() {
             }
             else -> true
         }
+    }
+
+    override fun onBackPressed() {
+        startActivity(Intent(this@SignUpActivity,IntroActivity::class.java))
+        finish()
+        super.onBackPressed()
     }
 }

@@ -25,9 +25,11 @@ class IntroActivity() : BaseActivity() {
     private fun setUpUI(){
         binding?.btnSignUpIntro?.setOnClickListener{
             startActivity(Intent(this@IntroActivity, SignUpActivity::class.java))
+            finish()
         }
         binding?.btnSignInIntro?.setOnClickListener{
             startActivity(Intent(this@IntroActivity, SignInActivity::class.java))
+            finish()
         }
     }
 }

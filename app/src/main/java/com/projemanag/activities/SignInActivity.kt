@@ -39,7 +39,8 @@ class SignInActivity : BaseActivity() {
             supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_black_color_back_24dp)
         }
         binding?.toolbarSignUpActivity?.setNavigationOnClickListener {
-            onBackPressed()
+            startActivity(Intent(this@SignInActivity,IntroActivity::class.java))
+            finish()
         }
     }
     fun signInSuccess(user: User){
@@ -57,7 +58,7 @@ class SignInActivity : BaseActivity() {
             FirebaseAuth.getInstance().signInWithEmailAndPassword(email,password)
                 .addOnCompleteListener { task->
                     if (task.isSuccessful){
-                        FireStore().loginUser(this@SignInActivity)
+                        FireStore().loadUserData(this@SignInActivity)
                     }
                     else{
                         Log.w("TAG", "signInWithEmail:failure", task.exception)
@@ -80,5 +81,11 @@ class SignInActivity : BaseActivity() {
             }
             else -> true
         }
+    }
+
+    override fun onBackPressed() {
+        startActivity(Intent(this@SignInActivity,IntroActivity::class.java))
+        finish()
+        super.onBackPressed()
     }
 }
