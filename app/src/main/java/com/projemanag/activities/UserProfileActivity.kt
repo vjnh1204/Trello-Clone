@@ -8,10 +8,14 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
@@ -21,13 +25,27 @@ import com.projemanag.R
 import com.projemanag.databinding.ActivityUserProfileBinding
 import com.projemanag.firebase.FireStore
 import com.projemanag.models.User
+import com.projemanag.utils.Constants
 
 class UserProfileActivity : BaseActivity() {
     private lateinit var binding: ActivityUserProfileBinding
-    private var openGalleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
+    private var mSelectedImageURI :Uri? = null
+    private var mProfileImageURL : String = ""
+    private lateinit var mUserDetails: User
+    var openGalleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
         result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
-            Toast.makeText(this,"AAAA",Toast.LENGTH_SHORT).show()
+            mSelectedImageURI = result.data?.data
+            try {
+                Glide.with(this@UserProfileActivity)
+                    .load(mSelectedImageURI)
+                    .circleCrop()
+                    .placeholder(R.drawable.ic_user_place_holder)
+                    .into(binding.ivUserImage)
+            }
+            catch (e:Exception){
+                e.printStackTrace()
+            }
         }
     }
     override fun setLayout(): ViewBinding {
@@ -39,59 +57,16 @@ class UserProfileActivity : BaseActivity() {
         setUpActionBar()
         FireStore().loadUserData(this)
         binding.ivUserImage.setOnClickListener {
-            pickImageChooser()
+            Constants.pickImageChooser(this@UserProfileActivity)
         }
-    }
-    private fun pickImageChooser(){
-        Dexter.withContext(this@UserProfileActivity)
-            .withPermissions(mutableListOf(Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE))
-            .withListener(object : MultiplePermissionsListener {
-                override fun onPermissionsChecked(p0: MultiplePermissionsReport?) {
-                    if(p0!!.areAllPermissionsGranted()){
-                        try {
-                            val intent = Intent(Intent.ACTION_PICK,MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-                            openGalleryLauncher.launch(intent)
-                        }
-                        catch (e:Exception){
-                            e.printStackTrace()
-                        }
-                    }
-                }
-
-                override fun onPermissionRationaleShouldBeShown(
-                    p0: MutableList<PermissionRequest>?,
-                    p1: PermissionToken?
-                ) {
-                    showRationaleDialogForPermissions()
-                }
-
-
-            }).onSameThread().check()
-    }
-    private fun showRationaleDialogForPermissions() {
-        AlertDialog.Builder(this).setMessage(
-            "" +
-                    "It looks like you have turned off permissions required" +
-                    "for this feature. It can be enable under the" +
-                    "Applications Settings. "
-        )
-            .setPositiveButton("GO TO SETTINGS.") { _, _ ->
-                try {
-                    val intent = Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.parse("package:$packageName")
-                    )
-                    startActivity(intent)
-
-                } catch (e: ActivityNotFoundException) {
-                    e.printStackTrace()
-                }
-
+        binding.btnUpdate.setOnClickListener {
+            if (mSelectedImageURI != null){
+                uploadUserImage()
             }
-            .setNegativeButton("Cancel") { dialog, _ ->
-                dialog.dismiss()
+            else{
+                updateUserProfileData()
             }
-            .show()
+        }
     }
 
     private fun setUpActionBar(){
@@ -105,8 +80,9 @@ class UserProfileActivity : BaseActivity() {
         }
     }
     fun setUserDataInUI(user: User){
+        mUserDetails = user
         Glide
-            .with(this)
+            .with(this@UserProfileActivity)
             .load(user.image)
             .circleCrop()
             .placeholder(R.drawable.ic_user_place_holder)
@@ -117,5 +93,67 @@ class UserProfileActivity : BaseActivity() {
             binding.etMobile.setText(user.mobile.toString())
         }
 
+    }
+    private fun uploadUserImage(){
+        showProgressDialog(resources.getString(R.string.please_wait))
+
+        if (mSelectedImageURI != null) {
+
+            val sRef: StorageReference = FirebaseStorage.getInstance().reference.child(
+                "USER_IMAGE" + System.currentTimeMillis() + "." + Constants.getFileExtension(
+                    this,mSelectedImageURI
+                )
+            )
+
+            sRef.putFile(mSelectedImageURI!!)
+                .addOnSuccessListener { taskSnapshot ->
+                    Log.e(
+                        "Firebase Image URL",
+                        taskSnapshot.metadata!!.reference!!.downloadUrl.toString()
+                    )
+                    taskSnapshot.metadata!!.reference!!.downloadUrl
+                        .addOnSuccessListener { uri ->
+                            Log.e("Downloadable Image URL", uri.toString())
+                            mProfileImageURL = uri.toString()
+                            updateUserProfileData()
+                            hideProgressDialog()
+                        }
+                }
+                .addOnFailureListener { exception ->
+                    Toast.makeText(
+                        this@UserProfileActivity,
+                        exception.message,
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    hideProgressDialog()
+                }
+        }
+    }
+
+    fun profileUpdateSuccess() {
+        setResult(RESULT_OK)
+        hideProgressDialog()
+        Toast.makeText(this,"User Profile update successfully",Toast.LENGTH_SHORT).show()
+        finish()
+    }
+    private fun updateUserProfileData() {
+
+        val userHashMap = HashMap<String, Any>()
+
+        if (mProfileImageURL.isNotEmpty() && mProfileImageURL != mUserDetails.image) {
+            userHashMap[Constants.IMAGE] = mProfileImageURL
+        }
+
+        if (binding.etName.text.toString() != mUserDetails.name) {
+            userHashMap[Constants.NAME] = binding.etName.text.toString()
+        }
+
+        if (binding.etMobile.text.toString() != mUserDetails.mobile.toString()) {
+            userHashMap[Constants.MOBILE] = binding.etMobile.text.toString().toLong()
+        }
+
+        // Update the data in the database.
+        FireStore().updateUserProfileData(this, userHashMap)
     }
 }
