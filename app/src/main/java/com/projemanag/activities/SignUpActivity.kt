@@ -50,6 +50,7 @@ class SignUpActivity : BaseActivity() {
         hideProgressDialog()
         Toast.makeText(this@SignUpActivity,"You are successfully registered",Toast.LENGTH_SHORT).show()
         FirebaseAuth.getInstance().signOut()
+        startActivity(Intent(this,IntroActivity::class.java))
         finish()
     }
     private fun resisterUser(){

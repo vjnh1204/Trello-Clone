@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.projemanag.activities.TaskListActivity
 import com.projemanag.databinding.ItemTaskBinding
@@ -51,8 +52,8 @@ class TaskListItemsAdapter(private val context: Context,private val taskList: Ar
 
             }
             binding.ibCloseEditableView.setOnClickListener {
-                binding.tvAddTaskList.visibility = View.VISIBLE
-                binding.cvAddTaskListName.visibility = View.GONE
+                binding.llTitleView.visibility = View.VISIBLE
+                binding.cvEditTaskListName.visibility = View.GONE
             }
             binding.ibDoneEditListName.setOnClickListener {
                 val listName = binding.etEditTaskListName.text.toString()
@@ -65,6 +66,44 @@ class TaskListItemsAdapter(private val context: Context,private val taskList: Ar
                 else{
                     Toast.makeText(context,"Please enter list name",Toast.LENGTH_SHORT).show()
                 }
+            }
+            binding.ibDeleteList.setOnClickListener {
+                if(context is TaskListActivity){
+                    context.deleteTaskList(position)
+                }
+            }
+            binding.tvAddCard.setOnClickListener {
+                binding.tvAddCard.visibility = View.GONE
+                binding.cvAddCard.visibility = View.VISIBLE
+            }
+            binding.ibCloseCardName.setOnClickListener {
+                binding.tvAddCard.visibility = View.VISIBLE
+                binding.cvAddCard.visibility = View.GONE
+            }
+            binding.ibDoneCardName.setOnClickListener {
+                val cardName = binding.etCardName.text.toString()
+                if (cardName.isNotEmpty()){
+                    if (context is TaskListActivity){
+                        context.createCardList(position,cardName)
+                    }
+                }
+                else{
+                    Toast.makeText(context,"Please enter card name",Toast.LENGTH_SHORT).show()
+                }
+            }
+            binding.rvCardList.apply {
+                layoutManager = LinearLayoutManager(this@TaskListItemsAdapter.context)
+                setHasFixedSize(true)
+                val adapterCard= CardListItemAdapter(this@TaskListItemsAdapter.context,model.cards)
+                adapterCard.setOnCardClickListener(object : CardListItemAdapter.OnCardClickListener{
+                    override fun onClick(cardPosition: Int) {
+                        if(this@TaskListItemsAdapter.context is TaskListActivity){
+                            this@TaskListItemsAdapter.context.cardDetails(position,cardPosition)
+                        }
+                    }
+
+                })
+                adapter = adapterCard
             }
         }
     }
