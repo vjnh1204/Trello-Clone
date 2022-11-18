@@ -7,13 +7,15 @@ data class Card(
     var name: String = "",
     val createBy: String= "",
     val assignedTo: ArrayList<String> = ArrayList(),
-    val labelColor: String = ""
+    val labelColor: String = "",
+    val dueDate: Long = 0
 ): Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString()!!,
         parcel.readString()!!,
         parcel.createStringArrayList()!!,
-        parcel.readString()!!
+        parcel.readString()!!,
+        parcel.readLong()
     ) {
     }
 
@@ -24,6 +26,7 @@ data class Card(
         dest?.writeString(createBy)
         dest?.writeStringList(assignedTo)
         dest?.writeString(labelColor)
+        dest?.writeLong(dueDate)
     }
 
     companion object CREATOR : Parcelable.Creator<Card> {

@@ -66,15 +66,30 @@ class FireStore {
         return currentUserUid
     }
 
-    fun updateUserProfileData(userProfileActivity: UserProfileActivity, userHashMap: HashMap<String, Any>) {
+    fun updateUserProfileData(activity: Activity, userHashMap: HashMap<String, Any>) {
         mFireStore.collection(Constants.USERS)
             .document(getCurrentUser())
             .update(userHashMap)
             .addOnSuccessListener {
-                userProfileActivity.profileUpdateSuccess()
+                when (activity) {
+                    is MainActivity -> {
+                        activity.tokenUpdateSuccess()
+                    }
+                    is UserProfileActivity -> {
+                        activity.profileUpdateSuccess()
+                    }
+                }
 
             }
             .addOnFailureListener {
+                when (activity) {
+                    is MainActivity -> {
+                        activity.hideProgressDialog()
+                    }
+                    is UserProfileActivity -> {
+                        activity.hideProgressDialog()
+                    }
+                }
                 Log.e("Error",it.message!!)
             }
     }
@@ -156,7 +171,7 @@ class FireStore {
             }
 
     }
-    fun getAssignedMembersListDetail(activity: MembersActivity,assignedTo:ArrayList<String>){
+    fun getAssignedMembersListDetail(activity: Activity,assignedTo:ArrayList<String>){
         mFireStore.collection(Constants.USERS)
             .whereIn(Constants.ID,assignedTo)
             .get()
@@ -167,10 +182,26 @@ class FireStore {
                     val user = i.toObject(User::class.java)
                     userList.add(user!!)
                 }
-                activity.setUpMembersList(userList)
+                when(activity){
+                    is MembersActivity ->{
+                        activity.setUpMembersList(userList)
+                    }
+                    is TaskListActivity ->{
+                        activity.mBoardMembersDetailList(userList)
+                    }
+                }
+
             }
             .addOnFailureListener {
-                activity.hideProgressDialog()
+                when(activity){
+                    is MembersActivity -> {
+                        activity.hideProgressDialog()
+                    }
+                    is TaskListActivity -> {
+                        activity.hideProgressDialog()
+                    }
+                }
+
             }
     }
     fun getMemberDetails(activity: MembersActivity,email:String){

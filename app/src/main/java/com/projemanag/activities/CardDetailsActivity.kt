@@ -1,18 +1,28 @@
 package com.projemanag.activities
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.graphics.Color
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.viewbinding.ViewBinding
 import com.projemanag.R
+import com.projemanag.adapter.CardMemberListAdapter
 import com.projemanag.databinding.ActivityCardDetailsBinding
 import com.projemanag.dialogs.LabelColorListDialog
+import com.projemanag.dialogs.MemberListDiaLog
 import com.projemanag.firebase.FireStore
 import com.projemanag.models.Board
 import com.projemanag.models.Card
+import com.projemanag.models.SelectedMember
+import com.projemanag.models.User
 import com.projemanag.utils.Constants
+import java.text.SimpleDateFormat
+import java.util.*
 
 class CardDetailsActivity : BaseActivity() {
     private lateinit var binding: ActivityCardDetailsBinding
@@ -25,6 +35,9 @@ class CardDetailsActivity : BaseActivity() {
 
     private var mSelectedColor = ""
 
+    private lateinit var mAssignedMemberList : ArrayList<User>
+
+    private var mSelectedDueDateMilliSeconds : Long = 0
     override fun setLayout(): ViewBinding = ActivityCardDetailsBinding.inflate(layoutInflater)
 
     override fun initView(viewBinding: ViewBinding) {
@@ -33,6 +46,10 @@ class CardDetailsActivity : BaseActivity() {
         setUpActionBar()
         binding.etNameCardDetails.setText(mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition].name)
         binding.etNameCardDetails.setSelection(binding.etNameCardDetails.text.toString().length)
+        mSelectedColor = mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition].labelColor
+        if (mSelectedColor.isNotEmpty()){
+            setColor()
+        }
         binding.btnUpdateCardDetails.setOnClickListener {
             if (binding.etNameCardDetails.text!!.isNotEmpty()) {
                 updateCardList()
@@ -42,6 +59,19 @@ class CardDetailsActivity : BaseActivity() {
         }
         binding.tvSelectLabelColor.setOnClickListener {
             labelColorListDialog()
+        }
+        binding.tvSelectMembers.setOnClickListener {
+            assignedMemberListDialog()
+        }
+        setUpSelectedMemberList()
+        binding.tvSelectDueDate.setOnClickListener {
+            datePickerDialog()
+        }
+        mSelectedDueDateMilliSeconds = mBoardDetails.taskList!![mTaskListPosition].cards[mCardListPosition].dueDate
+        if (mSelectedDueDateMilliSeconds > 0){
+            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH)
+            val dueDate = sdf.format(mSelectedDueDateMilliSeconds)
+            binding.tvSelectDueDate.text = dueDate
         }
     }
 
@@ -67,6 +97,9 @@ class CardDetailsActivity : BaseActivity() {
         }
         if (intent.hasExtra(Constants.CARD_LIST_POSITION)) {
             mCardListPosition = intent.getIntExtra(Constants.CARD_LIST_POSITION, -1)
+        }
+        if(intent.hasExtra(Constants.BOARD_ASSIGNED_MEMBER)){
+            mAssignedMemberList = intent.getParcelableArrayListExtra<User>(Constants.BOARD_ASSIGNED_MEMBER)!!
         }
     }
 
@@ -95,9 +128,9 @@ class CardDetailsActivity : BaseActivity() {
             binding.etNameCardDetails.text.toString(),
             mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition].createBy,
             mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition].assignedTo,
-            mSelectedColor
+            mSelectedColor,
+            mSelectedDueDateMilliSeconds
         )
-
         mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition] = card
         mBoardDetails.taskList?.removeAt(mBoardDetails.taskList?.size!!.minus(1))
 
@@ -145,5 +178,111 @@ class CardDetailsActivity : BaseActivity() {
 
         }
         listDialog.show()
+    }
+
+    private fun assignedMemberListDialog(){
+        val cardAssignedMembersList =
+            mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition].assignedTo
+        if (cardAssignedMembersList.size > 0){
+            for (i in mAssignedMemberList.indices){
+                for(j in cardAssignedMembersList){
+                    if (mAssignedMemberList[i].id == j){
+                        mAssignedMemberList[i].selected = true
+                    }
+                }
+            }
+        }
+        else{
+            for (i in mAssignedMemberList.indices){
+                mAssignedMemberList[i].selected = false
+            }
+        }
+        val memberListDialog = object : MemberListDiaLog(this,resources.getString(R.string.str_select_member),mAssignedMemberList){
+            override fun onItemSelected(user: User, action: String) {
+                if (action == Constants.SELECTED) {
+                    if (!mBoardDetails.taskList!![mTaskListPosition].cards[mCardListPosition].assignedTo.contains(
+                            user.id
+                        )
+                    ) {
+                        mBoardDetails.taskList!![mTaskListPosition].cards[mCardListPosition].assignedTo.add(
+                            user.id!!
+                        )
+                    }
+                } else {
+                    mBoardDetails.taskList!![mTaskListPosition].cards[mCardListPosition].assignedTo.remove(
+                        user.id
+                    )
+
+                    for (i in mAssignedMemberList.indices) {
+                        if (mAssignedMemberList[i].id == user.id) {
+                            mAssignedMemberList[i].selected = false
+                        }
+                    }
+                }
+
+                setUpSelectedMemberList()
+            }
+
+        }
+        memberListDialog.show()
+        Log.d("AAA",mAssignedMemberList.toString())
+    }
+    private fun setUpSelectedMemberList(){
+        val cardAssignedMemberList = mBoardDetails.taskList?.get(mTaskListPosition)!!.cards[mCardListPosition].assignedTo
+
+        val selectedMemberList = ArrayList<SelectedMember>()
+
+        for (i in mAssignedMemberList.indices) {
+            for (j in cardAssignedMemberList) {
+                if (mAssignedMemberList[i].id == j) {
+                    val selectedMember = SelectedMember(
+                        mAssignedMemberList[i].id!!,
+                        mAssignedMemberList[i].image!!
+                    )
+
+                    selectedMemberList.add(selectedMember)
+                }
+            }
+        }
+        if(selectedMemberList.size > 0){
+            selectedMemberList.add(SelectedMember("", ""))
+            binding.tvSelectMembers.visibility = View.GONE
+            binding.rvSelectedMembersList.visibility = View.VISIBLE
+            binding.rvSelectedMembersList.layoutManager = GridLayoutManager(this,6)
+            val adapter = CardMemberListAdapter(this,selectedMemberList,true)
+            binding.rvSelectedMembersList.adapter = adapter
+            adapter.setOnItemClickListener(object : CardMemberListAdapter.OnClickItemListener{
+                override fun onClick() {
+                    assignedMemberListDialog()
+                }
+
+            })
+        }
+        else{
+            binding.tvSelectMembers.visibility = View.VISIBLE
+            binding.rvSelectedMembersList.visibility = View.GONE
+        }
+    }
+    private fun datePickerDialog(){
+        val cal = Calendar.getInstance()
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH)
+        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+        val datePicker = DatePickerDialog(
+            this,
+            DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
+                val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH)
+                val sDayOfMonth = if(dayOfMonth < 10) "0$dayOfMonth" else "$dayOfMonth"
+                val sMonthOfYear = if (month <10) "0$month" else "$month"
+                val selectedDay = "$sDayOfMonth/$sMonthOfYear/$year"
+                val theDate = sdf.parse(selectedDay)
+                binding.tvSelectDueDate.text = selectedDay
+                mSelectedDueDateMilliSeconds = theDate!!.time
+            },
+            year,
+            month,
+            dayOfMonth
+        )
+        datePicker.show()
     }
 }

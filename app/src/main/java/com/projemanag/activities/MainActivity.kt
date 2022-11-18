@@ -1,7 +1,9 @@
 package com.projemanag.activities
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MenuItem
@@ -15,6 +17,7 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.iid.FirebaseInstanceId
 import com.projemanag.R
 import com.projemanag.adapter.BoardAdapter
 import com.projemanag.databinding.ActivityMainBinding
@@ -43,6 +46,8 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 FireStore().getBoardList(this)
             }
     }
+
+    private lateinit var mSharedPreferences: SharedPreferences
     override fun setLayout(): ViewBinding  = ActivityMainBinding.inflate(layoutInflater)
 
     override fun initView(viewBinding: ViewBinding) {
@@ -54,6 +59,21 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             val intent = Intent(this@MainActivity,CreateBoardActivity::class.java)
             intent.putExtra(Constants.NAME,mUSerName)
             createBoardActivityLauncher.launch(intent)
+        }
+        mSharedPreferences = this.getSharedPreferences(Constants.PROGEMANAG_PREFERENCES, Context.MODE_PRIVATE)
+        val tokenUpdated = mSharedPreferences.getBoolean(Constants.FCM_TOKEN_UPDATED, false)
+        hideProgressDialog()
+        // Here if the token is already updated than we don't need to update it every time.
+        if (tokenUpdated) {
+            // Get the current logged in user details.
+            // Show the progress dialog.
+            showProgressDialog(resources.getString(R.string.please_wait))
+            FireStore().loadUserData(this@MainActivity, true)
+        } else {
+            FirebaseInstanceId.getInstance()
+                .instanceId.addOnSuccessListener(this@MainActivity) { instanceIdResult ->
+                    updateFCMToken(instanceIdResult.token)
+                }
         }
     }
 
@@ -73,7 +93,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             binding.drawerLayout.openDrawer(GravityCompat.START)
         }
     }
-    @SuppressLint("SuspiciousIndentation")
+
     fun updateNavHeaderUser(user: User,isToReadBoardsList: Boolean){
         hideProgressDialog()
         mUSerName = user.name!!
@@ -107,6 +127,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             }
             R.id.nav_sign_out->{
                 FirebaseAuth.getInstance().signOut()
+                mSharedPreferences.edit().clear().apply()
                 val intent = Intent(this@MainActivity,IntroActivity::class.java)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
@@ -142,5 +163,29 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             binding.appBarMain.contentMain.tvNoBoardsAvailable.visibility = View.VISIBLE
         }
 
+    }
+    fun tokenUpdateSuccess() {
+
+        hideProgressDialog()
+
+        // Here we have added a another value in shared preference that the token is updated in the database successfully.
+        // So we don't need to update it every time.
+        val editor: SharedPreferences.Editor = mSharedPreferences.edit()
+        editor.putBoolean(Constants.FCM_TOKEN_UPDATED, true)
+        editor.apply()
+
+        // Get the current logged in user details.
+        // Show the progress dialog.
+        showProgressDialog(resources.getString(R.string.please_wait))
+        FireStore().loadUserData(this@MainActivity, true)
+    }
+    private fun updateFCMToken(token: String) {
+        val userHashMap = HashMap<String, Any>()
+        userHashMap[Constants.FCM_TOKEN] = token
+
+        // Update the data in the database.
+        // Show the progress dialog.
+        showProgressDialog(resources.getString(R.string.please_wait))
+        FireStore().updateUserProfileData(this@MainActivity, userHashMap)
     }
 }
